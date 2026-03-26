@@ -1,5 +1,6 @@
 import fs from 'fs/promises'
 import formidable from 'formidable'
+import FormData from 'form-data'
 
 export const config = {
   api: {
@@ -19,11 +20,11 @@ export default async function handler(req, res) {
       const form = formidable({ multiples: false, keepExtensions: true })
       form.parse(req, async (err, fields, files) => {
         if (err) return reject(err)
-        const f = files.image?.[0] || files.image
+        const f = Array.isArray(files.image) ? files.image[0] : files.image
         if (!f) return reject(new Error('No file'))
         try {
           const data = await fs.readFile(f.filepath)
-          resolve({ buffer: data, filename: f.originalFilename || 'upload.jpg', mimetype: f.mimetype || 'application/octet-stream' })
+          resolve({ buffer: data, filename: f.originalFilename || 'upload.jpg', mimetype: f.mimetype || 'image/jpeg' })
         } catch (e) {
           reject(e)
         }
@@ -31,12 +32,15 @@ export default async function handler(req, res) {
     })
 
     const formData = new FormData()
-    formData.append('image_file', new Blob([buffer], { type: mimetype }), filename)
+    formData.append('image_file', buffer, { filename, contentType: mimetype })
     formData.append('size', 'auto')
 
     const r = await fetch(REMOVE_BG_URL, {
       method: 'POST',
-      headers: { 'X-Api-Key': token },
+      headers: {
+        'X-Api-Key': token,
+        ...formData.getHeaders(),
+      },
       body: formData,
     })
 
