@@ -1,3 +1,5 @@
+import FormData from 'form-data'
+
 export const config = {
   api: {
     bodyParser: {
@@ -14,16 +16,19 @@ export default async function handler(req, res) {
   if (!token) return res.status(500).send('Missing REMOVE_BG_KEY')
 
   try {
-    const { imageBase64 } = req.body || {}
+    const { imageBase64, mime = 'image/png' } = req.body || {}
     if (!imageBase64) return res.status(400).send('No image data')
+    // strip possible data URL prefix
+    const b64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64
+    const buffer = Buffer.from(b64, 'base64')
 
     const fd = new FormData()
-    fd.append('image_file_b64', imageBase64)
+    fd.append('image_file', buffer, { filename: 'upload.png', contentType: mime })
     fd.append('size', 'auto')
 
     const r = await fetch(REMOVE_BG_URL, {
       method: 'POST',
-      headers: { 'X-Api-Key': token },
+      headers: { 'X-Api-Key': token, ...fd.getHeaders() },
       body: fd,
     })
 
