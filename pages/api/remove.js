@@ -1,4 +1,4 @@
-import fs from 'fs/promises'
+import fs from 'fs'
 import formidable from 'formidable'
 import FormData from 'form-data'
 
@@ -12,29 +12,18 @@ export default async function handler(req, res) {
   if (!token) return res.status(500).send('Missing REMOVE_BG_KEY')
 
   try {
-    const { buffer, filename, mimetype } = await new Promise((resolve, reject) => {
-      const form = formidable({ multiples: true, keepExtensions: true })
-      form.parse(req, async (err, fields, files) => {
+    const { filepath, filename, mimetype } = await new Promise((resolve, reject) => {
+      const form = formidable({ multiples: false, keepExtensions: true })
+      form.parse(req, (err, fields, files) => {
         if (err) return reject(err)
-        // 拿到第一个文件，无论字段名
-        const allFiles = Object.values(files).flat().filter(Boolean)
-        const f = allFiles[0]
+        const f = Array.isArray(files.image) ? files.image[0] : files.image
         if (!f) return reject(new Error('No file'))
-        try {
-          const data = await fs.readFile(f.filepath)
-          resolve({
-            buffer: data,
-            filename: f.originalFilename || 'upload.jpg',
-            mimetype: f.mimetype || 'image/jpeg',
-          })
-        } catch (e) {
-          reject(e)
-        }
+        resolve({ filepath: f.filepath, filename: f.originalFilename || 'upload.jpg', mimetype: f.mimetype || 'image/jpeg' })
       })
     })
 
     const fd = new FormData()
-    fd.append('image_file', buffer, { filename, contentType: mimetype })
+    fd.append('image_file', fs.createReadStream(filepath), { filename, contentType: mimetype })
     fd.append('size', 'auto')
 
     const r = await fetch(REMOVE_BG_URL, {
