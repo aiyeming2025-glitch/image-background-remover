@@ -1,10 +1,6 @@
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '15mb',
-    },
-  },
-}
+import formidable from 'formidable'
+
+export const config = { api: { bodyParser: false } }
 
 const REMOVE_BG_URL = 'https://api.remove.bg/v1.0/removebg'
 
@@ -14,12 +10,26 @@ export default async function handler(req, res) {
   if (!token) return res.status(500).send('Missing REMOVE_BG_KEY')
 
   try {
-    const { imageBase64 } = req.body || {}
-    if (!imageBase64) return res.status(400).send('No image data')
-    const b64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64
+    // Parse multipart fields only (no files needed now)
+    const { b64 } = await new Promise((resolve, reject) => {
+      const form = formidable({ multiples: false })
+      form.parse(req, (err, fields, files) => {
+        if (err) return reject(err)
+        // find first non-empty base64 field
+        const candidates = [fields.imageBase64, fields.image_file_b64, fields.image]
+        const found = candidates.find((v) => {
+          if (Array.isArray(v)) return v[0]
+          return v
+        })
+        if (!found) return reject(new Error('No image data'))
+        const val = Array.isArray(found) ? found[0] : found
+        resolve({ b64: val })
+      })
+    })
 
+    const cleanB64 = b64.includes(',') ? b64.split(',')[1] : b64
     const body = new URLSearchParams()
-    body.append('image_file_b64', b64)
+    body.append('image_file_b64', cleanB64)
     body.append('size', 'auto')
 
     const r = await fetch(REMOVE_BG_URL, {

@@ -3,7 +3,7 @@ import { useState } from 'react'
 async function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1]) // remove data:*;base64,
+    reader.onload = () => resolve(reader.result)
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
@@ -39,12 +39,10 @@ export default function Home() {
     setError('')
     setResultUrl(null)
     try {
-      const b64 = await fileToBase64(file)
-      const res = await fetch('/api/remove', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: b64 }),
-      })
+      const dataUrl = await fileToBase64(file)
+      const fd = new FormData()
+      fd.append('imageBase64', dataUrl)
+      const res = await fetch('/api/remove', { method: 'POST', body: fd })
       if (!res.ok) {
         const txt = await res.text()
         throw new Error(txt || `处理失败(${res.status})`)
@@ -69,7 +67,7 @@ export default function Home() {
 
         <div className="space-y-3">
           <input type="file" accept="image/*" onChange={onFileChange} />
-          {error && <div className="text-red-600 text-sm">{error}</div>}
+          {error && <div className="text-red-600 text-sm whitespace-pre-line">{error}</div>}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
