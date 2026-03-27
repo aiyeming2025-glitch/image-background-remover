@@ -1,5 +1,14 @@
 import { useState } from 'react'
 
+async function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1]) // remove data:*;base64,
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 export default function Home() {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -30,9 +39,12 @@ export default function Home() {
     setError('')
     setResultUrl(null)
     try {
-      const fd = new FormData()
-      fd.append('image', file)
-      const res = await fetch('/api/remove', { method: 'POST', body: fd })
+      const b64 = await fileToBase64(file)
+      const res = await fetch('/api/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: b64 }),
+      })
       if (!res.ok) {
         const txt = await res.text()
         throw new Error(txt || `处理失败(${res.status})`)
