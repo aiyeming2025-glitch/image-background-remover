@@ -40,9 +40,11 @@ export default function Home() {
     setResultUrl(null)
     try {
       const dataUrl = await fileToBase64(file)
-      const fd = new FormData()
-      fd.append('imageBase64', dataUrl)
-      const res = await fetch('/api/remove', { method: 'POST', body: fd })
+      const res = await fetch('/api/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: dataUrl }),
+      })
       if (!res.ok) {
         const txt = await res.text()
         throw new Error(txt || `处理失败(${res.status})`)
@@ -70,7 +72,7 @@ export default function Home() {
           {error && <div className="text-red-600 text-sm whitespace-pre-line">{error}</div>}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md-grid-cols-2 gap-6">
           <div>
             <h3 className="font-semibold mb-2">原图</h3>
             <div className="border rounded-md bg-slate-100 aspect-video flex items-center justify-center overflow-hidden">
